@@ -56,6 +56,20 @@ export type OpenInAppLauncher = (
 export type OpenInAppLaunchOutcome = 'launched' | 'missing' | 'failed'
 
 /**
+ * The inherited environment for a GUI launch, without Electron's Node-mode
+ * selector: a launched Electron-based editor would otherwise start as Node and
+ * reject the workspace directory as a script. An adapter's explicit env merges
+ * after this base, so an adapter that deliberately needs Node mode can still
+ * set the selector itself.
+ * @returns a fresh environment safe for a detached GUI launch.
+ */
+function guiEnvironment(): Record<string, string> {
+  const env = scrubbedParentEnv()
+  delete env.ELECTRON_RUN_AS_NODE
+  return env
+}
+
+/**
  * Launch one application adapter detached from this process: the child gets a
  * credential-scrubbed environment (never the harness's `*KEY*`/`*SECRET*`
  * variables) plus the adapter's explicit environment entries, holds no stdio
@@ -77,7 +91,7 @@ export const launchDetachedApp: OpenInAppLauncher = (command, args, options) =>
       detached: true,
       stdio: 'ignore',
       windowsHide: options.windowsHide,
-      env: { ...scrubbedParentEnv(), ...options.env },
+      env: { ...guiEnvironment(), ...options.env },
     })
     let settled = false
     const settle = (outcome: () => void): void => {

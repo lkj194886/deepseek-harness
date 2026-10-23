@@ -683,4 +683,22 @@ describe('launchDetachedApp', () => {
     }
     expect(JSON.parse(await readFile(witness, 'utf8'))).toEqual([null, 'overridden', '1'])
   })
+
+  it('drops the inherited Electron Node-mode selector unless the adapter sets it', async () => {
+    const root = await tempRoot()
+    const witness = join(root, 'env.json')
+    const previous = process.env.ELECTRON_RUN_AS_NODE
+    process.env.ELECTRON_RUN_AS_NODE = '1'
+    try {
+      await launchDetachedApp(node, [
+        '-e',
+        'require("node:fs").writeFileSync(process.argv[1], process.env.ELECTRON_RUN_AS_NODE ?? "")',
+        witness,
+      ], { watchMs: TIMEOUT_MS })
+    } finally {
+      if (previous === undefined) delete process.env.ELECTRON_RUN_AS_NODE
+      else process.env.ELECTRON_RUN_AS_NODE = previous
+    }
+    expect(await readFile(witness, 'utf8')).toBe('')
+  })
 })
